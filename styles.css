@@ -352,7 +352,18 @@ body {
   align-items: center;
   gap: 8px;
 }
-
+.sidebar-footer {
+  padding: 14px 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0; /* ← empêche le footer de se rétrécir */
+  position: sticky;
+  bottom: 0;
+  background: var(--bg-surface);
+  z-index: 10;
+}
 .user-info {
   display: flex;
   align-items: center;
