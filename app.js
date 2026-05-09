@@ -454,8 +454,14 @@ async function renderPage(pdf, pageNum, wrapper) {
     const baseViewport = page.getViewport({ scale: 1 });
 
     // Scale pour adapter à la largeur de l'écran
-    let scale = containerWidth / baseViewport.width;
-    if (!isMobile) scale = Math.max(scale, state.pdf.zoom);
+    // Scale de base pour adapter à l'écran
+const fitScale = containerWidth / baseViewport.width;
+
+// Applique le zoom utilisateur par dessus
+let scale = fitScale * state.pdf.zoom;
+
+// Minimum lisible sur mobile
+if (isMobile) scale = Math.max(scale, fitScale * 1.2);
 
     const viewport = page.getViewport({ scale });
 
@@ -500,11 +506,32 @@ function debouncedSave(page) {
 }
 async function rezoomPdf(z) {
   if (!state.pdf.doc) return;
-  state.pdf.zoom = Math.max(0.5, Math.min(3.0, z)); updateZoomDisplay();
-  const p = state.pdf.currentPage;
-  document.getElementById('pdfPages').innerHTML = '';
-  await renderAllPages(state.pdf.doc);
-  setTimeout(() => scrollToPage(p), 100);
+  state.pdf.zoom = Math.max(0.5, Math.min(3.0, z));
+  updateZoomDisplay();
+
+  const currentPage = state.pdf.currentPage;
+  const container   = document.getElementById('pdfPages');
+
+  // Re-rend seulement les pages déjà visibles (pas toutes)
+  const wrappers = container.querySelectorAll('.pdf-page-wrapper');
+  
+  for (const wrapper of wrappers) {
+    const pg = parseInt(wrapper.dataset.page);
+    // Re-rend seulement les pages proches de la page actuelle
+    if (Math.abs(pg - currentPage) <= 2) {
+      await renderPage(state.pdf.doc, pg, wrapper);
+    } else {
+      // Remet le placeholder pour les pages lointaines
+      wrapper.innerHTML = '';
+      wrapper.style.minHeight = '842px';
+      wrapper.style.minWidth  = '595px';
+      wrapper.style.background = '#fff';
+    }
+  }
+
+  // Scroll sans animation pour éviter le flash
+  const target = document.querySelector(`[data-page="${currentPage}"]`);
+  if (target) target.scrollIntoView({ behavior: 'instant', block: 'start' });
 }
 function closePdfReader() {
   if (state.pdf.doc) { state.pdf.doc.destroy(); state.pdf.doc = null; }
