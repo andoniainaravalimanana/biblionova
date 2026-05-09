@@ -510,27 +510,23 @@ async function rezoomPdf(z) {
 
   const currentPage = state.pdf.currentPage;
   const container   = document.getElementById('pdfPages');
+  const wrappers    = container.querySelectorAll('.pdf-page-wrapper');
 
-  // Re-rend seulement les pages déjà visibles (pas toutes)
-  const wrappers = container.querySelectorAll('.pdf-page-wrapper');
-  
+  // Re-rend toutes les pages déjà rendues
+  const renderPromises = [];
   for (const wrapper of wrappers) {
     const pg = parseInt(wrapper.dataset.page);
-    // Re-rend seulement les pages proches de la page actuelle
-    if (Math.abs(pg - currentPage) <= 2) {
-      await renderPage(state.pdf.doc, pg, wrapper);
-    } else {
-      // Remet le placeholder pour les pages lointaines
-      wrapper.innerHTML = '';
-      wrapper.style.minHeight = '842px';
-      wrapper.style.minWidth  = '595px';
-      wrapper.style.background = '#fff';
+    if (wrapper.querySelector('canvas')) {
+      renderPromises.push(renderPage(state.pdf.doc, pg, wrapper));
     }
   }
+  await Promise.all(renderPromises);
 
-  // Scroll sans animation pour éviter le flash
-  const target = document.querySelector(`[data-page="${currentPage}"]`);
-  if (target) target.scrollIntoView({ behavior: 'instant', block: 'start' });
+  // Scroll vers la page courante sans animation
+  requestAnimationFrame(() => {
+    const target = document.querySelector(`[data-page="${currentPage}"]`);
+    if (target) target.scrollIntoView({ behavior: 'instant', block: 'start' });
+  });
 }
 function closePdfReader() {
   if (state.pdf.doc) { state.pdf.doc.destroy(); state.pdf.doc = null; }
