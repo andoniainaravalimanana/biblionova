@@ -453,15 +453,14 @@ async function renderPage(pdf, pageNum, wrapper) {
     // Viewport initial pour calculer les proportions
     const baseViewport = page.getViewport({ scale: 1 });
 
-    // Scale pour adapter à la largeur de l'écran
     // Scale de base pour adapter à l'écran
-const fitScale = containerWidth / baseViewport.width;
+    const fitScale = containerWidth / baseViewport.width;
 
-// Applique le zoom utilisateur par dessus
-let scale = fitScale * state.pdf.zoom;
+    // Applique le zoom utilisateur par dessus
+    let scale = fitScale * state.pdf.zoom;
 
-// Minimum lisible sur mobile
-if (isMobile) scale = Math.max(scale, fitScale * 1.2);
+    // Minimum lisible sur mobile
+    if (isMobile) scale = Math.max(scale, fitScale * 1.2);
 
     const viewport = page.getViewport({ scale });
 
