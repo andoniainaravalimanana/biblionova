@@ -240,9 +240,14 @@ body {
 /* ===== APP SHELL ===== */
 .app-shell {
   display: flex;
-  height: 100vh;
+  height: 100dvh; /* dvh = dynamic viewport height sur mobile */
   width: 100vw;
   overflow: hidden;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 /* ===== SIDEBAR ===== */
@@ -434,6 +439,7 @@ body {
   flex-direction: column;
   overflow: hidden;
   background: var(--bg-base);
+  min-height: 0; /* ← important */
 }
 
 /* ===== TOPBAR ===== */
@@ -658,8 +664,8 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0; /* ← important */
 }
-
 .reader-topbar {
   height: var(--reader-top-h);
   background: var(--bg-surface);
