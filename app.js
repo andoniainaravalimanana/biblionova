@@ -446,26 +446,32 @@ async function renderPage(pdf, pageNum, wrapper) {
   try {
     const page = await pdf.getPage(pageNum);
 
-    // Détecte si mobile
-    const isMobile = window.innerWidth <= 768;
+    // Calcule la largeur disponible
+    const containerWidth = document.getElementById('pdfContainer').clientWidth - 32;
+    const isMobile       = window.innerWidth <= 768;
 
-    // Scale plus élevé sur mobile pour éviter le flou
-    const baseScale  = isMobile ? 2.0 : state.pdf.zoom;
-    const viewport   = page.getViewport({ scale: baseScale });
+    // Viewport initial pour calculer les proportions
+    const baseViewport = page.getViewport({ scale: 1 });
+
+    // Scale pour adapter à la largeur de l'écran
+    let scale = containerWidth / baseViewport.width;
+    if (!isMobile) scale = Math.max(scale, state.pdf.zoom);
+
+    const viewport = page.getViewport({ scale });
 
     const canvas = document.createElement('canvas');
     const ctx    = canvas.getContext('2d');
 
-    // Rendu haute résolution
-    const pixelRatio  = window.devicePixelRatio || 1;
-    canvas.width      = viewport.width  * pixelRatio;
-    canvas.height     = viewport.height * pixelRatio;
-    canvas.style.width  = viewport.width  + 'px';
-    canvas.style.height = viewport.height + 'px';
-    ctx.scale(pixelRatio, pixelRatio);
+    // Résolution x1.5 pour netteté sans être trop lourd
+    const dpr         = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width      = Math.floor(viewport.width  * dpr);
+    canvas.height     = Math.floor(viewport.height * dpr);
+    canvas.style.width  = Math.floor(viewport.width)  + 'px';
+    canvas.style.height = Math.floor(viewport.height) + 'px';
+    ctx.scale(dpr, dpr);
 
-    wrapper.style.width  = viewport.width  + 'px';
-    wrapper.style.height = viewport.height + 'px';
+    wrapper.style.width     = Math.floor(viewport.width)  + 'px';
+    wrapper.style.height    = Math.floor(viewport.height) + 'px';
     wrapper.style.minHeight = '';
     wrapper.style.minWidth  = '';
     wrapper.innerHTML = '';
