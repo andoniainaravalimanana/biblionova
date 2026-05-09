@@ -445,15 +445,40 @@ async function renderAllPages(pdf) {
 async function renderPage(pdf, pageNum, wrapper) {
   try {
     const page = await pdf.getPage(pageNum);
-    const vp = page.getViewport({ scale: state.pdf.zoom });
-    const c = document.createElement('canvas');
-    c.width = vp.width; c.height = vp.height; c.style.display = 'block';
-    wrapper.style.minHeight = ''; wrapper.style.minWidth = '';
-    wrapper.style.width = vp.width + 'px'; wrapper.style.height = vp.height + 'px';
-    wrapper.innerHTML = ''; wrapper.appendChild(c);
-    await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+
+    // Détecte si mobile
+    const isMobile = window.innerWidth <= 768;
+
+    // Scale plus élevé sur mobile pour éviter le flou
+    const baseScale  = isMobile ? 2.0 : state.pdf.zoom;
+    const viewport   = page.getViewport({ scale: baseScale });
+
+    const canvas = document.createElement('canvas');
+    const ctx    = canvas.getContext('2d');
+
+    // Rendu haute résolution
+    const pixelRatio  = window.devicePixelRatio || 1;
+    canvas.width      = viewport.width  * pixelRatio;
+    canvas.height     = viewport.height * pixelRatio;
+    canvas.style.width  = viewport.width  + 'px';
+    canvas.style.height = viewport.height + 'px';
+    ctx.scale(pixelRatio, pixelRatio);
+
+    wrapper.style.width  = viewport.width  + 'px';
+    wrapper.style.height = viewport.height + 'px';
+    wrapper.style.minHeight = '';
+    wrapper.style.minWidth  = '';
+    wrapper.innerHTML = '';
+    wrapper.appendChild(canvas);
+
+    await page.render({ canvasContext: ctx, viewport }).promise;
     page.cleanup();
-  } catch (err) { console.warn('Page error p.' + pageNum, err); }
+
+    // Watermark
+    const userName = state.user?.name || state.user?.email || 'BiblioNova';
+    wrapper.dataset.watermark = userName.toUpperCase();
+
+  } catch (err) { console.warn('Page error p.'+pageNum, err); }
 }
 
 function scrollToPage(n) { const t = document.querySelector(`[data-page="${n}"]`); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
