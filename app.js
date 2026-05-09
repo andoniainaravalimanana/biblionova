@@ -463,7 +463,7 @@ async function renderPage(pdf, pageNum, wrapper) {
     const ctx    = canvas.getContext('2d');
 
     // Résolution x1.5 pour netteté sans être trop lourd
-    const dpr         = Math.min(window.devicePixelRatio || 1, 2);
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 3);
     canvas.width      = Math.floor(viewport.width  * dpr);
     canvas.height     = Math.floor(viewport.height * dpr);
     canvas.style.width  = Math.floor(viewport.width)  + 'px';
