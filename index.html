@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BiblioNova — Bibliothèque Numérique</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+
+<!-- ========== LOGIN OVERLAY ========== -->
+<div id="loginOverlay" class="overlay active">
+
+  <!-- LOGIN CARD -->
+  <div class="login-card" id="loginCard">
+    <div class="login-logo">
+      <span class="logo-icon">◈</span>
+      <span class="logo-text">BiblioNova</span>
+    </div>
+    <h2 class="login-title">Connexion</h2>
+    <p class="login-sub">Entrez vos identifiants pour accéder à la bibliothèque</p>
+    <div id="loginError" class="error-msg hidden"></div>
+    <div class="field-group">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="vous@email.com" />
+    </div>
+    <div class="field-group">
+  <label>Mot de passe</label>
+  <div class="password-input-wrap">
+    <input type="password" id="loginPassword" placeholder="••••••••" />
+    <button type="button" class="toggle-pwd" onclick="togglePwd('loginPassword', this)">👁</button>
+  </div>
+</div>
+<button class="btn-primary" id="loginBtn">Se connecter</button>
+<div class="login-switch">
+  Pas encore de compte ?
+  <button class="link-btn" id="showRegisterBtn">Créer un compte</button>
+</div>
+  </div>
+
+  <!-- REGISTER CARD -->
+  <div class="login-card register-card hidden" id="registerCard">
+    <div class="login-logo">
+      <span class="logo-icon">◈</span>
+      <span class="logo-text">BiblioNova</span>
+    </div>
+    <h2 class="login-title">Créer un compte</h2>
+    <p class="login-sub">Remplissez le formulaire — votre compte sera activé après validation</p>
+    <div id="registerError" class="error-msg hidden"></div>
+    <div id="registerSuccess" class="success-msg hidden"></div>
+    <div class="field-group">
+      <label>Nom complet</label>
+      <input type="text" id="regName" placeholder="Jean Dupont" />
+    </div>
+    <div class="field-group">
+      <label>Adresse email</label>
+      <input type="email" id="regEmail" placeholder="vous@email.com" />
+    </div>
+    <div class="field-group">
+      <label>Numéro de téléphone</label>
+      <input type="tel" id="regPhone" placeholder="+261 34 00 000 00" />
+    </div>
+    <div class="field-group">
+  <label>Mot de passe</label>
+  <div class="password-input-wrap">
+    <input type="password" id="regPassword" placeholder="Minimum 6 caractères" />
+    <button type="button" class="toggle-pwd" onclick="togglePwd('regPassword', this)">👁</button>
+  </div>
+</div>
+<div class="field-group">
+  <label>Confirmer le mot de passe</label>
+  <div class="password-input-wrap">
+    <input type="password" id="regConfirm" placeholder="Répétez le mot de passe" />
+    <button type="button" class="toggle-pwd" onclick="togglePwd('regConfirm', this)">👁</button>
+  </div>
+</div>
+<button class="btn-primary" id="registerBtn">Créer mon compte</button>
+<div class="login-switch">
+  Déjà un compte ?
+  <button class="link-btn" id="showLoginBtn">Se connecter</button>
+</div>
+</div>
+
+</div>
+
+<!-- ========== ADMIN PANEL OVERLAY ========== -->
+<div id="adminOverlay" class="overlay">
+  <div class="admin-panel">
+    <div class="admin-header">
+      <h2>⚙️ Panneau Administrateur</h2>
+      <button class="btn-icon" id="closeAdmin">✕</button>
+    </div>
+
+    <div class="admin-tabs">
+      <button class="tab-btn active" data-tab="folders">📁 Dossiers</button>
+      <button class="tab-btn" data-tab="upload">⬆️ Upload PDF</button>
+      <button class="tab-btn" data-tab="requests">👥 Demandes <span id="requestsBadge" class="requests-badge hidden">0</span></button>
+    </div>
+
+    <!-- Folders Tab -->
+    <div id="tab-folders" class="tab-content active">
+      <div class="admin-section">
+        <h3>Créer un dossier</h3>
+        <div class="input-row">
+          <input type="text" id="newFolderName" placeholder="Nom du dossier..." />
+          <button class="btn-accent" id="createFolderBtn">Créer</button>
+        </div>
+      </div>
+      <div class="admin-section">
+        <h3>Dossiers existants</h3>
+        <div id="adminFolderList" class="admin-list"></div>
+      </div>
+    </div>
+
+    <!-- Upload Tab -->
+    <div id="tab-upload" class="tab-content">
+      <div class="admin-section">
+        <h3>Uploader un PDF</h3>
+        <div class="field-group">
+          <label>Titre du document</label>
+          <input type="text" id="uploadTitle" placeholder="Titre du PDF..." />
+        </div>
+        <div class="field-group">
+          <label>Dossier</label>
+          <select id="uploadFolder">
+            <option value="">— Choisir un dossier —</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>Fichier PDF</label>
+          <div class="file-drop" id="fileDrop">
+            <span class="file-drop-icon">📄</span>
+            <span>Glisser-déposer ou <u>cliquer pour choisir</u></span>
+            <input type="file" id="fileInput" accept=".pdf" hidden />
+          </div>
+          <div id="fileSelectedName" class="file-selected-name hidden"></div>
+        </div>
+        <div id="uploadProgress" class="upload-progress hidden">
+          <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+          <span id="progressText">0%</span>
+        </div>
+        <button class="btn-accent" id="uploadBtn">Uploader</button>
+        <div id="uploadMsg" class="upload-msg hidden"></div>
+      </div>
+      <div class="admin-section">
+        <h3>Fichiers uploadés</h3>
+        <div id="adminFileList" class="admin-list"></div>
+      </div>
+    </div>
+
+    <!-- Requests Tab -->
+    <div id="tab-requests" class="tab-content">
+      <div class="admin-section">
+        <h3>Demandes en attente</h3>
+        <div id="pendingRequestsList" class="admin-list"></div>
+      </div>
+      <div class="admin-section">
+        <h3>Demandes traitées</h3>
+        <div id="treatedRequestsList" class="admin-list"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ========== MAIN APP ========== -->
+<div id="appShell" class="app-shell hidden">
+
+  <!-- SIDEBAR OVERLAY (mobile) -->
+  <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <span class="logo-icon">◈</span>
+      <span class="logo-text">BiblioNova</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Bibliothèque</div>
+      <ul id="folderList" class="folder-list">
+        <li class="folder-item active" data-id="all">
+          <span class="folder-icon">🗂</span>
+          <span>Tous les fichiers</span>
+        </li>
+      </ul>
+    </nav>
+   <div class="sidebar-footer">
+      <div class="user-info" id="userInfo">
+        <span class="user-avatar" id="userAvatar">E</span>
+        <div>
+          <div class="user-name" id="userName">Étudiant</div>
+          <div class="user-role" id="userRole">Lecture seule</div>
+        </div>
+      </div>
+      <div class="sidebar-actions">
+        <button class="btn-icon-sm" id="adminBtn" title="Administration" style="display:none">⚙️</button>
+        <button class="btn-icon-sm" id="logoutBtn" title="Déconnexion">[➜</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Overlay pour fermer la sidebar sur mobile -->
+  <div id="sidebarOverlay" class="sidebar-overlay"></div>
+  <!-- MAIN CONTENT -->
+
+  <main class="main-content">
+    <header class="topbar">
+      <button class="sidebar-toggle" id="sidebarToggle">☰</button>
+      <div class="topbar-title" id="topbarTitle">Tous les fichiers</div>
+      <div class="topbar-search">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="Rechercher un PDF..." />
+      </div>
+    </header>
+
+    <!-- FILE GRID VIEW -->
+    <div id="fileGridView" class="file-grid-view">
+      <div class="section-header">
+        <h2 id="sectionTitle">Tous les fichiers</h2>
+        <span id="fileCount" class="file-count">0 fichier(s)</span>
+      </div>
+      <div id="fileGrid" class="file-grid"></div>
+      <div id="emptyState" class="empty-state hidden">
+        <span class="empty-icon">📭</span>
+        <p>Aucun fichier dans ce dossier</p>
+      </div>
+    </div>
+
+    <!-- PDF READER VIEW -->
+    <div id="pdfReaderView" class="pdf-reader-view hidden">
+      <div class="reader-topbar">
+        <button class="btn-back" id="backToGrid">← Retour</button>
+        <div class="reader-title" id="readerTitle">Document</div>
+        <div class="reader-info" id="readerInfo">Page 1 / 1</div>
+      </div>
+      <div class="reader-toolbar">
+        <div class="toolbar-left">
+          <button class="tool-btn" id="prevPage" title="Page précédente">‹</button>
+          <div class="page-nav">
+            <input type="number" id="pageInput" min="1" value="1" />
+            <span id="totalPages">/ 1</span>
+          </div>
+          <button class="tool-btn" id="nextPage" title="Page suivante">›</button>
+        </div>
+        <div class="toolbar-center">
+          <button class="tool-btn" id="zoomOut" title="Dézoomer">−</button>
+          <span id="zoomLevel">100%</span>
+          <button class="tool-btn" id="zoomIn" title="Zoomer">+</button>
+          <button class="tool-btn" id="zoomFit" title="Adapter">⊡</button>
+        </div>
+        <div class="toolbar-right">
+          <span class="save-indicator" id="saveIndicator">✓ Sauvegardé</span>
+          <button class="tool-btn" id="fullscreenBtn" title="Plein écran">⛶</button>
+        </div>
+      </div>
+      <div class="pdf-container" id="pdfContainer">
+        <div id="pdfPages" class="pdf-pages"></div>
+        <div id="pdfLoading" class="pdf-loading">
+          <div class="spinner"></div>
+          <p>Chargement du document...</p>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- RENAME MODAL -->
+<div id="renameModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3>Renommer le dossier</h3>
+    <input type="text" id="renameInput" placeholder="Nouveau nom..." />
+    <div class="modal-actions">
+      <button class="btn-ghost" id="cancelRename">Annuler</button>
+      <button class="btn-accent" id="confirmRename">Renommer</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM MODAL -->
+<div id="deleteModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3>Confirmer la suppression</h3>
+    <p id="deleteModalMsg">Êtes-vous sûr de vouloir supprimer cet élément ?</p>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="cancelDelete">Annuler</button>
+      <button class="btn-danger" id="confirmDelete">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
