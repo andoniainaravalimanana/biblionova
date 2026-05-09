@@ -1722,21 +1722,23 @@ button:focus-visible {
   transition: filter .3s ease;
 }
 
-/* PDF mobile responsive */
 @media (max-width: 768px) {
   .pdf-container {
-    padding: 8px;
+    padding: 8px 4px;
   }
   .pdf-pages {
     gap: 8px;
-    padding: 8px;
+    padding: 8px 4px;
+    align-items: center;
+    width: 100%;
   }
   .pdf-page-wrapper {
-    max-width: 100%;
-    overflow-x: auto;
+    max-width: 100% !important;
+    width: 100% !important;
   }
   .pdf-page-wrapper canvas {
-    max-width: 100%;
+    max-width: 100% !important;
+    width: 100% !important;
     height: auto !important;
   }
 }
