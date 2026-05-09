@@ -258,10 +258,10 @@ body {
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  transition: transform .3s ease;
+  height: 100dvh;
+  transition: transform .25s cubic-bezier(.16,1,.3,1);
   z-index: 100;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .sidebar-brand {
@@ -277,6 +277,7 @@ body {
   overflow-y: auto;
   padding: 16px 12px;
   -webkit-overflow-scrolling: touch;
+  min-height: 0;
 }
 
 .nav-section-label {
@@ -350,24 +351,19 @@ body {
   padding: 1px 7px;
 }
 
+
 .sidebar-footer {
   padding: 14px 16px;
   border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
   gap: 8px;
-}
-.sidebar-footer {
-  padding: 14px 16px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0; /* ← empêche le footer de se rétrécir */
+  flex-shrink: 0;
   position: sticky;
   bottom: 0;
   background: var(--bg-surface);
   z-index: 10;
+  min-height: 64px;
 }
 .user-info {
   display: flex;
@@ -1211,9 +1207,13 @@ body {
 @media (max-width: 768px) {
   .sidebar {
     position: fixed;
+    top: 0;
+    left: 0;
+    height: 100dvh;
     transform: translateX(-100%);
+    display: flex;
+    flex-direction: column;
   }
-
   .sidebar.open {
     transform: translateX(0);
     box-shadow: var(--shadow-lg);
