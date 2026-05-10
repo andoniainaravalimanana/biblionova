@@ -896,8 +896,6 @@ setInterval(() => {
   }
 }, 500);
 
-document.addEventListener('DOMContentLoaded', init);
-
 
 /* ============================================================
    🛠️  UTILS
