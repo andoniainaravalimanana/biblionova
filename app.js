@@ -872,8 +872,8 @@ document.addEventListener('keydown', e => {
 });
 
 // Détecte si DevTools est ouvert et flou le contenu
-const devtools = { open: false };
-document.addEventListener('DOMContentLoaded', () => {
+  // Détecte DevTools
+  const devtools = { open: false };
   setInterval(() => {
     const threshold = 160;
     if (window.outerWidth - window.innerWidth > threshold ||
@@ -1131,4 +1131,3 @@ async function refreshToken() {
 }
 setInterval(refreshToken, 50 * 60 * 1000);
 
-document.addEventListener('DOMContentLoaded', init);
