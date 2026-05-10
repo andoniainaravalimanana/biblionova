@@ -98,7 +98,7 @@ const state = {
 async function login(email, password) {
   if (DEMO_MODE) {
     const user = DEMO_USERS.find(u => u.email === email && u.password === password);
-    if (user) { state.user = { ...user }; sessionStorage.setItem('bn_user', JSON.stringify(state.user)); return { ok: true }; }
+    if (user) { state.user = { ...user }; localStorage.setItem('bn_user', JSON.stringify(state.user)); return { ok: true }; }
     return { ok: false, message: 'Email ou mot de passe incorrect.' };
   }
   try {
@@ -873,27 +873,30 @@ document.addEventListener('keydown', e => {
 
 // Détecte si DevTools est ouvert et flou le contenu
 const devtools = { open: false };
-setInterval(() => {
-  const threshold = 160;
-  if (window.outerWidth - window.innerWidth > threshold ||
-      window.outerHeight - window.innerHeight > threshold) {
-    if (!devtools.open) {
-      devtools.open = true;
+document.addEventListener('DOMContentLoaded', () => {
+  setInterval(() => {
+    const threshold = 160;
+    if (window.outerWidth - window.innerWidth > threshold ||
+        window.outerHeight - window.innerHeight > threshold) {
+      if (!devtools.open) {
+        devtools.open = true;
+        const container = document.getElementById('pdfContainer');
+        if (container) container.classList.add('blurred');
+        const pages = document.getElementById('pdfPages');
+        if (pages) pages.innerHTML = `
+          <div style="display:flex;flex-direction:column;align-items:center;
+            justify-content:center;height:400px;color:var(--text-secondary);gap:16px">
+            <span style="font-size:3rem">🔒</span>
+            <p>Accès bloqué — fermez les outils de développement</p>
+          </div>`;
+      }
+    } else {
+      devtools.open = false;
       const container = document.getElementById('pdfContainer');
-      if (container) container.classList.add('blurred');
-      document.getElementById('pdfPages').innerHTML = `
-        <div style="display:flex;flex-direction:column;align-items:center;
-          justify-content:center;height:400px;color:var(--text-secondary);gap:16px">
-          <span style="font-size:3rem">🔒</span>
-          <p>Accès bloqué — fermez les outils de développement</p>
-        </div>`;
+      if (container) container.classList.remove('blurred');
     }
-  } else {
-    devtools.open = false;
-    const container = document.getElementById('pdfContainer');
-    if (container) container.classList.remove('blurred');
-  }
-}, 500);
+  }, 500);
+});
 
 
 /* ============================================================
