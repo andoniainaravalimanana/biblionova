@@ -125,11 +125,12 @@ async function login(email, password) {
     });
 
     localStorage.setItem('sb_token', data.access_token);
-    localStorage.setItem('sb_refresh_token', data.refresh_token);
-   localStorage.setItem('bn_user', JSON.stringify(state.user));
-    const meta = data.user?.user_metadata || {};
-    state.user = { id: data.user.id, email, role: meta.role || 'student', name: meta.name || email.split('@')[0] };
-    sessionStorage.setItem('bn_user', JSON.stringify(state.user));
+localStorage.setItem('sb_refresh_token', data.refresh_token);
+// ✅ Crée state.user D'ABORD
+const meta = data.user?.user_metadata || {};
+state.user = { id: data.user.id, email, role: meta.role || 'student', name: meta.name || email.split('@')[0] };
+// ✅ PUIS sauvegarde dans localStorage
+localStorage.setItem('bn_user', JSON.stringify(state.user));
     return { ok: true };
   } catch (err) { return { ok: false, message: 'Erreur de connexion au serveur.' }; }
 }
