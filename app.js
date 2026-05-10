@@ -124,11 +124,11 @@ async function login(email, password) {
       body: JSON.stringify({ user_id: data.user.id, session_id: sessionId })
     });
 
-    localStorage.setItem('sb_token', data.access_token);
-    localStorage.setItem('sb_refresh_token', data.refresh_token);
+    sessionStorage.setItem('sb_token', data.access_token);
+    sessionStorage.setItem('sb_refresh_token', data.refresh_token);
     const meta = data.user?.user_metadata || {};
     state.user = { id: data.user.id, email, role: meta.role || 'student', name: meta.name || email.split('@')[0] };
-    localStorage.setItem('bn_user', JSON.stringify(state.user));
+    sessionStorage.setItem('bn_user', JSON.stringify(state.user));
     return { ok: true };
   } catch (err) { return { ok: false, message: 'Erreur de connexion au serveur.' }; }
 }
