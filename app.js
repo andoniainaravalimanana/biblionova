@@ -1128,4 +1128,5 @@ async function refreshToken() {
   } catch (e) { console.log('Token refresh failed', e); }
 }
 setInterval(refreshToken, 50 * 60 * 1000);
+document.addEventListener('DOMContentLoaded', init);
 
