@@ -896,6 +896,8 @@ setInterval(() => {
   }
 }, 500);
 
+// ── Point d'entrée unique ──
+document.addEventListener('DOMContentLoaded', init);
 
 /* ============================================================
    🛠️  UTILS
