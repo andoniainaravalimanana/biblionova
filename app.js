@@ -30,7 +30,7 @@ const DEMO_USERS = [
 /* ============================================================
    🔑  HELPERS
 ============================================================ */
-function getToken() { return localStorage.getItem('sb_token') || SUPABASE_ANON;}
+function getToken() { return sessionStorage.getItem('sb_token') || SUPABASE_ANON;}
 function getSessionId() {
   let sid = localStorage.getItem('bn_session_id');
   if (!sid) { sid = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2); localStorage.setItem('bn_session_id', sid); }
@@ -141,15 +141,14 @@ function logout() {
     }).catch(() => { });
   }
   state.user = null; 
-  localStorage.removeItem('bn_user');
-  localStorage.removeItem('sb_token');
-  localStorage.removeItem('sb_refresh_token');
+  sessionStorage.removeItem('bn_user');
+  sessionStorage.removeItem('sb_token');
   closePdfReader(); showLoginOverlay();
 }
 
 function checkSession() {
-  const saved = localStorage.getItem('bn_user');
-  const token = localStorage.getItem('sb_token');
+  const saved = sessionStorage.getItem('bn_user');
+  const token = sessionStorage.getItem('sb_token');
   if (saved) { state.user = JSON.parse(saved); return true; }
   return false;
 }
@@ -1115,9 +1114,7 @@ async function refreshToken() {
     const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
       method: 'POST',
       headers: { 'apikey': SUPABASE_ANON, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: localStorage.getItem('sb_refresh_token')
-      localStorage.setItem('sb_token', ...)
-      localStorage.setItem('sb_refresh_token', ...) })
+      body: JSON.stringify({ refresh_token: sessionStorage.getItem('sb_refresh_token') })
     });
     if (res.ok) {
       const data = await res.json();
