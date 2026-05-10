@@ -340,7 +340,7 @@ async function openPdf(file) {
               'Authorization': `Bearer ${getToken()}`,
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ expiresIn: 60 }) // expire dans 60 secondes
+            body: JSON.stringify({ expiresIn: 30 }) // expire en 30 secondes
           }
         );
 
