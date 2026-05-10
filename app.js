@@ -871,32 +871,32 @@ document.addEventListener('keydown', e => {
   if (e.ctrlKey && e.key === 'u') { e.preventDefault(); return false; }
 });
 
-// Détecte si DevTools est ouvert et flou le contenu
-  // Détecte DevTools
-  const devtools = { open: false };
-  setInterval(() => {
-    const threshold = 160;
-    if (window.outerWidth - window.innerWidth > threshold ||
-        window.outerHeight - window.innerHeight > threshold) {
-      if (!devtools.open) {
-        devtools.open = true;
-        const container = document.getElementById('pdfContainer');
-        if (container) container.classList.add('blurred');
-        const pages = document.getElementById('pdfPages');
-        if (pages) pages.innerHTML = `
-          <div style="display:flex;flex-direction:column;align-items:center;
-            justify-content:center;height:400px;color:var(--text-secondary);gap:16px">
-            <span style="font-size:3rem">🔒</span>
-            <p>Accès bloqué — fermez les outils de développement</p>
-          </div>`;
-      }
-    } else {
-      devtools.open = false;
+// ── Détecte DevTools ──
+const devtools = { open: false };
+setInterval(() => {
+  const threshold = 160;
+  if (window.outerWidth - window.innerWidth > threshold ||
+      window.outerHeight - window.innerHeight > threshold) {
+    if (!devtools.open) {
+      devtools.open = true;
       const container = document.getElementById('pdfContainer');
-      if (container) container.classList.remove('blurred');
+      if (container) container.classList.add('blurred');
+      const pages = document.getElementById('pdfPages');
+      if (pages) pages.innerHTML = `
+        <div style="display:flex;flex-direction:column;align-items:center;
+          justify-content:center;height:400px;color:var(--text-secondary);gap:16px">
+          <span style="font-size:3rem">🔒</span>
+          <p>Accès bloqué — fermez les outils de développement</p>
+        </div>`;
     }
-  }, 500);
-});
+  } else {
+    devtools.open = false;
+    const container = document.getElementById('pdfContainer');
+    if (container) container.classList.remove('blurred');
+  }
+}, 500);
+
+document.addEventListener('DOMContentLoaded', init);
 
 
 /* ============================================================
