@@ -30,7 +30,7 @@ const DEMO_USERS = [
 /* ============================================================
    🔑  HELPERS
 ============================================================ */
-function getToken() { return sessionStorage.getItem('sb_token') || SUPABASE_ANON; }
+function getToken() { return localStorage.getItem('sb_token') || SUPABASE_ANON;}
 function getSessionId() {
   let sid = localStorage.getItem('bn_session_id');
   if (!sid) { sid = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2); localStorage.setItem('bn_session_id', sid); }
@@ -124,11 +124,11 @@ async function login(email, password) {
       body: JSON.stringify({ user_id: data.user.id, session_id: sessionId })
     });
 
-    sessionStorage.setItem('sb_token', data.access_token);
-    sessionStorage.setItem('sb_refresh_token', data.refresh_token);
+    localStorage.setItem('sb_token', data.access_token);
+    localStorage.setItem('sb_refresh_token', data.refresh_token);
     const meta = data.user?.user_metadata || {};
     state.user = { id: data.user.id, email, role: meta.role || 'student', name: meta.name || email.split('@')[0] };
-    sessionStorage.setItem('bn_user', JSON.stringify(state.user));
+    localStorage.setItem('bn_user', JSON.stringify(state.user));
     return { ok: true };
   } catch (err) { return { ok: false, message: 'Erreur de connexion au serveur.' }; }
 }
@@ -140,12 +140,16 @@ function logout() {
       method: 'DELETE', headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${token}` }
     }).catch(() => { });
   }
-  state.user = null; sessionStorage.removeItem('bn_user'); sessionStorage.removeItem('sb_token');
+  state.user = null; 
+  localStorage.removeItem('bn_user');
+  localStorage.removeItem('sb_token');
+  localStorage.removeItem('sb_refresh_token');
   closePdfReader(); showLoginOverlay();
 }
 
 function checkSession() {
-  const saved = sessionStorage.getItem('bn_user');
+  const saved = localStorage.getItem('bn_user');
+  const token = localStorage.getItem('sb_token');
   if (saved) { state.user = JSON.parse(saved); return true; }
   return false;
 }
@@ -1111,7 +1115,9 @@ async function refreshToken() {
     const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
       method: 'POST',
       headers: { 'apikey': SUPABASE_ANON, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: sessionStorage.getItem('sb_refresh_token') })
+      body: JSON.stringify({ refresh_token: localStorage.getItem('sb_refresh_token')
+      localStorage.setItem('sb_token', ...)
+      localStorage.setItem('sb_refresh_token', ...) })
     });
     if (res.ok) {
       const data = await res.json();
