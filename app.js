@@ -408,7 +408,9 @@ async function openPdf(file) {
     await renderAllPages(pdf);
 
     state.pdf.currentPage = Math.min(lastPage, pdf.numPages);
-    setTimeout(() => scrollToPage(state.pdf.currentPage), 200);
+    setTimeout(() => scrollToPage(state.pdf.currentPage);
+    setTimeout(() => scrollToPage(state.pdf.currentPage), 800);
+    }, 400);
     updatePageDisplay(state.pdf.currentPage);
 
     // ── Étape 5 : efface les données après chargement ──
