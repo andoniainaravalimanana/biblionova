@@ -149,11 +149,66 @@ function logout() {
   closePdfReader(); showLoginOverlay();
 }
 
-function checkSession() {
-  const saved = localStorage.getItem('bn_user');
+async function checkSession() {
   const token = localStorage.getItem('sb_token');
-  if (saved && token) { state.user = JSON.parse(saved); return true; }
-  return false;
+  const refresh = localStorage.getItem('sb_refresh_token');
+  const saved = localStorage.getItem('bn_user');
+
+  // Rien sauvegardé
+  if (!token || !refresh || !saved) {
+    return false;
+  }
+
+  try {
+    // Vérifie l'utilisateur avec Supabase
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: {
+        'apikey': SUPABASE_ANON,
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    // Token encore valide
+    if (res.ok) {
+      state.user = JSON.parse(saved);
+      return true;
+    }
+
+    // Token expiré → refresh automatique
+    const refreshRes = await fetch(
+      `${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          refresh_token: refresh
+        })
+      }
+    );
+
+    if (!refreshRes.ok) {
+      logout();
+      return false;
+    }
+
+    const data = await refreshRes.json();
+
+    // Sauvegarde nouveaux tokens
+    localStorage.setItem('sb_token', data.access_token);
+    localStorage.setItem('sb_refresh_token', data.refresh_token);
+
+    state.user = JSON.parse(saved);
+
+    return true;
+
+  } catch (err) {
+    console.error('Session restore error', err);
+    logout();
+    return false;
+  }
 }
 
 /* ============================================================
@@ -920,7 +975,7 @@ async function init() {
   applyPdfSecurity();
   setupRegisterEvents();
   setupEventListeners();
-  if (checkSession()) {
+  if (await checkSession()) {
     hideLoginOverlay(); renderUserInfo();
     await loadFolders(); await loadFiles();
     renderSidebar(); renderFileGrid();
