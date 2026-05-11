@@ -130,7 +130,7 @@ localStorage.setItem('sb_refresh_token', data.refresh_token);
 const meta = data.user?.user_metadata || {};
 state.user = { id: data.user.id, email, role: meta.role || 'student', name: meta.name || email.split('@')[0] };
 // ✅ PUIS sauvegarde dans localStorage
-localStorage.setItem('bn_user', JSON.stringify(state.user));
+
     return { ok: true };
   } catch (err) { return { ok: false, message: 'Erreur de connexion au serveur.' }; }
 }
@@ -151,16 +151,14 @@ function logout() {
 
 async function checkSession() {
   const token = localStorage.getItem('sb_token');
-  const refresh = localStorage.getItem('sb_refresh_token');
   const saved = localStorage.getItem('bn_user');
 
-  // Rien sauvegardé
-  if (!token || !refresh || !saved) {
+  // Vérifie seulement le token + user
+  if (!token || !saved) {
     return false;
   }
 
   try {
-    // Vérifie l'utilisateur avec Supabase
     const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       headers: {
         'apikey': SUPABASE_ANON,
@@ -168,41 +166,15 @@ async function checkSession() {
       }
     });
 
-    // Token encore valide
+    // Session valide
     if (res.ok) {
       state.user = JSON.parse(saved);
       return true;
     }
 
-    // Token expiré → refresh automatique
-    const refreshRes = await fetch(
-      `${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,
-      {
-        method: 'POST',
-        headers: {
-          'apikey': SUPABASE_ANON,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          refresh_token: refresh
-        })
-      }
-    );
-
-    if (!refreshRes.ok) {
-      logout();
-      return false;
-    }
-
-    const data = await refreshRes.json();
-
-    // Sauvegarde nouveaux tokens
-    localStorage.setItem('sb_token', data.access_token);
-    localStorage.setItem('sb_refresh_token', data.refresh_token);
-
-    state.user = JSON.parse(saved);
-
-    return true;
+    // Session expirée
+    logout();
+    return false;
 
   } catch (err) {
     console.error('Session restore error', err);
@@ -1165,22 +1137,6 @@ window.deleteRequest = deleteRequest;
 window.togglePwd = togglePwd;
 
 // ── Refresh token automatique toutes les 50 minutes ──
-async function refreshToken() {
-  const token = localStorage.getItem('sb_token');
-  if (!token || !state.user) return;
-  try {
-    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
-      method: 'POST',
-      headers: { 'apikey': SUPABASE_ANON, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: localStorage.getItem('sb_refresh_token') })
-    });
-    if (res.ok) {
-      const data = await res.json();
-      localStorage.setItem('sb_token', data.access_token);
-      localStorage.setItem('sb_refresh_token', data.refresh_token);
-    }
-  } catch (e) { console.log('Token refresh failed', e); }
-}
-setInterval(refreshToken, 50 * 60 * 1000);
+
 document.addEventListener('DOMContentLoaded', init);
 
