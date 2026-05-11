@@ -1125,10 +1125,8 @@ async function refreshToken() {
       const data = await res.json();
       localStorage.setItem('sb_token', data.access_token);
       localStorage.setItem('sb_refresh_token', data.refresh_token);
-    }resh failed', e); }
-}
+    }
   } catch (e) { console.log('Token refresh failed', e); }
 }
 setInterval(refreshToken, 50 * 60 * 1000);
 document.addEventListener('DOMContentLoaded', init);
-
