@@ -125,11 +125,9 @@ async function login(email, password) {
     });
 
     localStorage.setItem('sb_token', data.access_token);
-localStorage.setItem('sb_refresh_token', data.refresh_token);
-// ✅ Crée state.user D'ABORD
+localStorage.setItem('sb_refresh_token', data.refresh_token || '');
 const meta = data.user?.user_metadata || {};
 state.user = { id: data.user.id, email, role: meta.role || 'student', name: meta.name || email.split('@')[0] };
-// ✅ PUIS sauvegarde dans localStorage
 localStorage.setItem('bn_user', JSON.stringify(state.user));
     return { ok: true };
   } catch (err) { return { ok: false, message: 'Erreur de connexion au serveur.' }; }
@@ -152,12 +150,29 @@ function logout() {
 function checkSession() {
   const saved = localStorage.getItem('bn_user');
   const token = localStorage.getItem('sb_token');
-  if (saved && token) { 
-    state.user = JSON.parse(saved); 
-    return true; 
+  if (!saved || !token) return false;
+  try {
+    // Vérifie si le token JWT est encore valide
+    const parts = token.split('.');
+    if (parts.length === 3) {
+      const payload = JSON.parse(atob(parts[1]));
+      const now = Math.floor(Date.now() / 1000);
+      // Si expiré depuis plus de 24h → logout
+      if (payload.exp && (payload.exp + 86400) < now) {
+        localStorage.removeItem('bn_user');
+        localStorage.removeItem('sb_token');
+        localStorage.removeItem('sb_refresh_token');
+        return false;
+      }
+    }
+    state.user = JSON.parse(saved);
+    return true;
+  } catch (e) {
+    state.user = JSON.parse(saved);
+    return true;
   }
-  return false;
 }
+
 /* ============================================================
    📂  DATA LAYER
 ============================================================ */
@@ -922,11 +937,18 @@ async function init() {
   applyPdfSecurity();
   setupRegisterEvents();
   setupEventListeners();
+
   if (checkSession()) {
-    hideLoginOverlay(); renderUserInfo();
-    await loadFolders(); await loadFiles();
-    renderSidebar(); renderFileGrid();
+    // Tente de rafraîchir le token silencieusement
+    await refreshToken();
+    hideLoginOverlay();
+    renderUserInfo();
+    await loadFolders();
+    await loadFiles();
+    renderSidebar();
+    renderFileGrid();
   }
+  // Si pas de session → la page login reste visible (comportement par défaut)
 }
 
 /* ============================================================
@@ -1114,19 +1136,28 @@ window.togglePwd = togglePwd;
 // ── Refresh token automatique toutes les 50 minutes ──
 async function refreshToken() {
   const token = localStorage.getItem('sb_token');
-  if (!token || !state.user) return;
+  const refreshTok = localStorage.getItem('sb_refresh_token');
+  if (!token || !refreshTok || !state.user) return;
   try {
+    // Vérifie si le token expire dans moins d'1h
+    const parts = token.split('.');
+    if (parts.length === 3) {
+      const payload = JSON.parse(atob(parts[1]));
+      const now = Math.floor(Date.now() / 1000);
+      if (payload.exp && (payload.exp - now) > 3600) return; // encore valide
+    }
     const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
       method: 'POST',
       headers: { 'apikey': SUPABASE_ANON, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: localStorage.getItem('sb_refresh_token') })
+      body: JSON.stringify({ refresh_token: refreshTok })
     });
     if (res.ok) {
       const data = await res.json();
       localStorage.setItem('sb_token', data.access_token);
-      localStorage.setItem('sb_refresh_token', data.refresh_token);
+      if (data.refresh_token) localStorage.setItem('sb_refresh_token', data.refresh_token);
     }
   } catch (e) { console.log('Token refresh failed', e); }
 }
-setInterval(refreshToken, 50 * 60 * 1000);
+// Vérifie toutes les 10 minutes
+setInterval(refreshToken, 10 * 60 * 1000);
 document.addEventListener('DOMContentLoaded', init);
