@@ -119,28 +119,20 @@ async function login(email, password) {
     const data = await res.json();
     if (!res.ok) return { ok: false, message: data.error_description || data.message || 'Identifiants incorrects.' };
 
-    const sessionId = getSessionId();
-    const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/active_sessions?user_id=eq.${data.user.id}&select=session_id`, {
-      headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${data.access_token}` }
-    });
-    const sessions = await checkRes.json();
-    if (Array.isArray(sessions) && sessions.length > 0 && sessions[0].session_id !== sessionId) {
-      return { ok: false, message: '⚠️ Ce compte est déjà connecté sur un autre appareil.' };
-    }
-    await fetch(`${SUPABASE_URL}/rest/v1/active_sessions`, {
-      method: 'POST',
-      headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${data.access_token}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
-      body: JSON.stringify({ user_id: data.user.id, session_id: sessionId })
-    });
-
-    // ✅ Crée state.user AVANT localStorage
+    // ✅ Sauvegarde IMMÉDIATEMENT le token
     const meta = data.user?.user_metadata || {};
     state.user = { id: data.user.id, email, role: meta.role || 'student', name: meta.name || email.split('@')[0] };
-
-    // ✅ Sauvegarde tout dans localStorage
     localStorage.setItem('sb_token', data.access_token);
     localStorage.setItem('sb_refresh_token', data.refresh_token || '');
     localStorage.setItem('bn_user', JSON.stringify(state.user));
+
+    // Enregistre la session en arrière-plan (non bloquant)
+    const sessionId = getSessionId();
+    fetch(`${SUPABASE_URL}/rest/v1/active_sessions`, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${data.access_token}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({ user_id: data.user.id, session_id: sessionId })
+    }).catch(() => {});
 
     return { ok: true };
   } catch (err) {
