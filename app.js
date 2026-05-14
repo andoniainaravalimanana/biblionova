@@ -16,24 +16,29 @@ const DEMO_MODE = false;
 ============================================================ */
 const DEMO_FOLDERS = [
   { id: 'f1', name: 'Mathématiques', created_at: '2024-01-01' },
-  { id: 'f2', name: 'Informatique', created_at: '2024-01-02' },
+  { id: 'f2', name: 'Informatique',  created_at: '2024-01-02' },
 ];
 const DEMO_FILES = [
   { id: 'd1', name: "Introduction à l'Algèbre", folder_id: 'f1', file_url: 'https://arxiv.org/pdf/1802.01528', created_at: '2024-02-01' },
-  { id: 'd2', name: 'Structures de Données', folder_id: 'f2', file_url: 'https://arxiv.org/pdf/1907.11174', created_at: '2024-02-03' },
+  { id: 'd2', name: 'Structures de Données',    folder_id: 'f2', file_url: 'https://arxiv.org/pdf/1907.11174', created_at: '2024-02-03' },
 ];
 const DEMO_USERS = [
-  { email: 'admin@biblionova.com', password: 'admin123', role: 'admin', name: 'Admin' },
-  { email: 'etudiant@biblionova.com', password: 'etu123', role: 'student', name: 'Étudiant' },
+  { email: 'admin@biblionova.com',    password: 'admin123', role: 'admin',   name: 'Admin' },
+  { email: 'etudiant@biblionova.com', password: 'etu123',   role: 'student', name: 'Étudiant' },
 ];
 
 /* ============================================================
    🔑  HELPERS
 ============================================================ */
-function getToken() { return localStorage.getItem('sb_token') || SUPABASE_ANON; }
+function getToken() {
+  return localStorage.getItem('sb_token') || SUPABASE_ANON;
+}
 function getSessionId() {
   let sid = localStorage.getItem('bn_session_id');
-  if (!sid) { sid = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2); localStorage.setItem('bn_session_id', sid); }
+  if (!sid) {
+    sid = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2);
+    localStorage.setItem('bn_session_id', sid);
+  }
   return sid;
 }
 function authHeaders(extra = {}) {
@@ -98,18 +103,22 @@ const state = {
 async function login(email, password) {
   if (DEMO_MODE) {
     const user = DEMO_USERS.find(u => u.email === email && u.password === password);
-    if (user) { state.user = { ...user }; localStorage.setItem('bn_user', JSON.stringify(state.user)); return { ok: true }; }
+    if (user) {
+      state.user = { ...user };
+      localStorage.setItem('bn_user', JSON.stringify(state.user));
+      return { ok: true };
+    }
     return { ok: false, message: 'Email ou mot de passe incorrect.' };
   }
   try {
     const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-      method: 'POST', headers: { 'apikey': SUPABASE_ANON, 'Content-Type': 'application/json' },
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_ANON, 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
     const data = await res.json();
     if (!res.ok) return { ok: false, message: data.error_description || data.message || 'Identifiants incorrects.' };
 
-    // Vérif session unique
     const sessionId = getSessionId();
     const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/active_sessions?user_id=eq.${data.user.id}&select=session_id`, {
       headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${data.access_token}` }
@@ -124,41 +133,49 @@ async function login(email, password) {
       body: JSON.stringify({ user_id: data.user.id, session_id: sessionId })
     });
 
+    // ✅ Crée state.user AVANT localStorage
+    const meta = data.user?.user_metadata || {};
+    state.user = { id: data.user.id, email, role: meta.role || 'student', name: meta.name || email.split('@')[0] };
+
+    // ✅ Sauvegarde tout dans localStorage
     localStorage.setItem('sb_token', data.access_token);
-localStorage.setItem('sb_refresh_token', data.refresh_token || '');
-const meta = data.user?.user_metadata || {};
-state.user = { id: data.user.id, email, role: meta.role || 'student', name: meta.name || email.split('@')[0] };
-localStorage.setItem('bn_user', JSON.stringify(state.user));
+    localStorage.setItem('sb_refresh_token', data.refresh_token || '');
+    localStorage.setItem('bn_user', JSON.stringify(state.user));
+
     return { ok: true };
-  } catch (err) { return { ok: false, message: 'Erreur de connexion au serveur.' }; }
+  } catch (err) {
+    return { ok: false, message: 'Erreur de connexion au serveur.' };
+  }
 }
 
 function logout() {
-  const user = state.user; const token = localStorage.getItem('sb_token');
+  const user = state.user;
+  const token = localStorage.getItem('sb_token');
   if (user?.id && token) {
     fetch(`${SUPABASE_URL}/rest/v1/active_sessions?user_id=eq.${user.id}`, {
       method: 'DELETE', headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${token}` }
-    }).catch(() => { });
+    }).catch(() => {});
   }
-  state.user = null; 
+  state.user = null;
   localStorage.removeItem('bn_user');
-  localStorage.removeItem('sb_token'); 
+  localStorage.removeItem('sb_token');
   localStorage.removeItem('sb_refresh_token');
-  closePdfReader(); showLoginOverlay();
+  closePdfReader();
+  showLoginOverlay();
 }
 
+// ✅ checkSession — restaure la session depuis localStorage
 function checkSession() {
   const saved = localStorage.getItem('bn_user');
   const token = localStorage.getItem('sb_token');
   if (!saved || !token) return false;
   try {
-    // Vérifie si le token JWT est encore valide
+    // Vérifie expiration JWT avec tolérance 7 jours
     const parts = token.split('.');
     if (parts.length === 3) {
       const payload = JSON.parse(atob(parts[1]));
       const now = Math.floor(Date.now() / 1000);
-      // Si expiré depuis plus de 24h → logout
-      if (payload.exp && (payload.exp + 86400) < now) {
+      if (payload.exp && (payload.exp + 7 * 24 * 3600) < now) {
         localStorage.removeItem('bn_user');
         localStorage.removeItem('sb_token');
         localStorage.removeItem('sb_refresh_token');
@@ -168,8 +185,34 @@ function checkSession() {
     state.user = JSON.parse(saved);
     return true;
   } catch (e) {
-    state.user = JSON.parse(saved);
-    return true;
+    try { state.user = JSON.parse(saved); return true; } catch (e2) { return false; }
+  }
+}
+
+// ✅ refreshToken — renouvelle silencieusement
+async function refreshToken() {
+  const token = localStorage.getItem('sb_token');
+  const refreshTok = localStorage.getItem('sb_refresh_token');
+  if (!token || !refreshTok || !state.user) return;
+  try {
+    const parts = token.split('.');
+    if (parts.length === 3) {
+      const payload = JSON.parse(atob(parts[1]));
+      const now = Math.floor(Date.now() / 1000);
+      if (payload.exp && (payload.exp - now) > 7200) return;
+    }
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_ANON, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshTok })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.access_token) localStorage.setItem('sb_token', data.access_token);
+      if (data.refresh_token) localStorage.setItem('sb_refresh_token', data.refresh_token);
+    }
+  } catch (e) {
+    console.log('Token refresh failed', e);
   }
 }
 
@@ -292,8 +335,6 @@ function renderUserInfo() {
 async function renderFileGrid() {
   const grid = document.getElementById('fileGrid');
   const empty = document.getElementById('emptyState');
-
-  // Affiche skeleton pendant le chargement
   grid.innerHTML = Array(4).fill(0).map(() => `
     <div class="file-card" style="pointer-events:none">
       <div class="skeleton" style="width:56px;height:72px;border-radius:6px"></div>
@@ -303,7 +344,6 @@ async function renderFileGrid() {
       </div>
     </div>
   `).join('');
-
   const title = document.getElementById('sectionTitle');
   const count = document.getElementById('fileCount');
   const top = document.getElementById('topbarTitle');
@@ -343,30 +383,18 @@ async function openPdf(file) {
   const lastPage = await getProgress(file.id);
 
   try {
-    // ── Étape 1 : génère une URL signée qui expire dans 60 secondes ──
     document.getElementById('pdfLoading').innerHTML = '<div class="spinner"></div><p>Sécurisation...</p>';
-
     let fetchUrl = file.file_url;
 
     if (!DEMO_MODE) {
-      // Extrait le path depuis l'URL
       const urlParts = file.file_url.split('/pdf-library/');
       const filePath = urlParts[1];
-
       if (filePath) {
-        const signRes = await fetch(
-          `${SUPABASE_URL}/storage/v1/object/sign/pdf-library/${filePath}`,
-          {
-            method: 'POST',
-            headers: {
-              'apikey': SUPABASE_ANON,
-              'Authorization': `Bearer ${getToken()}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ expiresIn: 30 }) // expire en 30 secondes
-          }
-        );
-
+        const signRes = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/pdf-library/${filePath}`, {
+          method: 'POST',
+          headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${getToken()}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ expiresIn: 30 })
+        });
         if (signRes.ok) {
           const signData = await signRes.json();
           fetchUrl = `${SUPABASE_URL}/storage/v1${signData.signedURL}`;
@@ -374,9 +402,7 @@ async function openPdf(file) {
       }
     }
 
-    // ── Étape 2 : télécharge en mémoire (l'URL n'est jamais visible) ──
     document.getElementById('pdfLoading').innerHTML = '<div class="spinner"></div><p>Téléchargement… 0%</p>';
-
     const response = await fetch(fetchUrl, { method: 'GET', mode: 'cors' });
     if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
 
@@ -393,31 +419,26 @@ async function openPdf(file) {
       received += value.length;
       if (total > 0) {
         const pct = Math.round(received / total * 100);
-        document.getElementById('pdfLoading').innerHTML =
-          `<div class="spinner"></div><p>Chargement… ${pct}%</p>`;
+        document.getElementById('pdfLoading').innerHTML = `<div class="spinner"></div><p>Chargement… ${pct}%</p>`;
       }
     }
 
-    // ── Étape 3 : assemble en mémoire (jamais de fichier sur disque) ──
     const pdfData = new Uint8Array(received);
     let offset = 0;
     for (const chunk of chunks) { pdfData.set(chunk, offset); offset += chunk.length; }
 
-    // ── Étape 4 : charge dans PDF.js depuis la mémoire ──
     document.getElementById('pdfLoading').innerHTML = '<div class="spinner"></div><p>Rendu du document...</p>';
-
     const task = pdfjsLib.getDocument({
       data: pdfData,
       cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
       cMapPacked: true,
-      disableAutoFetch: true,  // pas de pré-chargement
+      disableAutoFetch: true,
       disableStream: false,
     });
 
     const pdf = await task.promise;
     state.pdf.doc = pdf;
     state.pdf.totalPages = pdf.numPages;
-
     document.getElementById('totalPages').textContent = `/ ${pdf.numPages}`;
     document.getElementById('pageInput').max = pdf.numPages;
     document.getElementById('pdfLoading').style.display = 'none';
@@ -425,11 +446,12 @@ async function openPdf(file) {
     await renderAllPages(pdf);
 
     state.pdf.currentPage = Math.min(lastPage, pdf.numPages);
-    setTimeout(() => scrollToPage(state.pdf.currentPage), 200);
     updatePageDisplay(state.pdf.currentPage);
-
-    // ── Étape 5 : efface les données après chargement ──
-    // pdfData est en mémoire JS uniquement, inaccessible depuis l'extérieur
+    // Double scroll pour garantir l'arrivée à la bonne page
+    setTimeout(() => {
+      scrollToPage(state.pdf.currentPage);
+      setTimeout(() => scrollToPage(state.pdf.currentPage), 600);
+    }, 300);
 
   } catch (err) {
     console.error('PDF load error:', err);
@@ -468,51 +490,32 @@ async function renderAllPages(pdf) {
 async function renderPage(pdf, pageNum, wrapper) {
   try {
     const page = await pdf.getPage(pageNum);
-
-    // Calcule la largeur disponible
     const containerWidth = document.getElementById('pdfContainer').clientWidth - 32;
-    const isMobile       = window.innerWidth <= 768;
-
-    // Viewport initial pour calculer les proportions
+    const isMobile = window.innerWidth <= 768;
     const baseViewport = page.getViewport({ scale: 1 });
-
-    // Scale de base pour adapter à l'écran
     const fitScale = containerWidth / baseViewport.width;
-
-    // Applique le zoom utilisateur par dessus
     let scale = fitScale * state.pdf.zoom;
-
-    // Minimum lisible sur mobile
     if (isMobile) scale = Math.max(scale, fitScale * 1.2);
-
     const viewport = page.getViewport({ scale });
-
     const canvas = document.createElement('canvas');
-    const ctx    = canvas.getContext('2d');
-
-    // Résolution x1.5 pour netteté sans être trop lourd
+    const ctx = canvas.getContext('2d');
     const dpr = window.devicePixelRatio || 1;
-    canvas.width      = Math.floor(viewport.width  * dpr);
-    canvas.height     = Math.floor(viewport.height * dpr);
+    canvas.width  = Math.floor(viewport.width  * dpr);
+    canvas.height = Math.floor(viewport.height * dpr);
     canvas.style.width  = Math.floor(viewport.width)  + 'px';
     canvas.style.height = Math.floor(viewport.height) + 'px';
     ctx.scale(dpr, dpr);
-
-    wrapper.style.width     = Math.floor(viewport.width)  + 'px';
-    wrapper.style.height    = Math.floor(viewport.height) + 'px';
+    wrapper.style.width  = Math.floor(viewport.width)  + 'px';
+    wrapper.style.height = Math.floor(viewport.height) + 'px';
     wrapper.style.minHeight = '';
     wrapper.style.minWidth  = '';
     wrapper.innerHTML = '';
     wrapper.appendChild(canvas);
-
     await page.render({ canvasContext: ctx, viewport }).promise;
     page.cleanup();
-
-    // Watermark
     const userName = state.user?.name || state.user?.email || 'BiblioNova';
     wrapper.dataset.watermark = userName.toUpperCase();
-
-  } catch (err) { console.warn('Page error p.'+pageNum, err); }
+  } catch (err) { console.warn('Page error p.' + pageNum, err); }
 }
 
 function scrollToPage(n) { const t = document.querySelector(`[data-page="${n}"]`); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
@@ -530,22 +533,14 @@ async function rezoomPdf(z) {
   if (!state.pdf.doc) return;
   state.pdf.zoom = Math.max(0.5, Math.min(3.0, z));
   updateZoomDisplay();
-
   const currentPage = state.pdf.currentPage;
-  const container   = document.getElementById('pdfPages');
-  const wrappers    = container.querySelectorAll('.pdf-page-wrapper');
-
-  // Re-rend toutes les pages déjà rendues
+  const container = document.getElementById('pdfPages');
+  const wrappers = container.querySelectorAll('.pdf-page-wrapper');
   const renderPromises = [];
   for (const wrapper of wrappers) {
-    const pg = parseInt(wrapper.dataset.page);
-    if (wrapper.querySelector('canvas')) {
-      renderPromises.push(renderPage(state.pdf.doc, pg, wrapper));
-    }
+    if (wrapper.querySelector('canvas')) renderPromises.push(renderPage(state.pdf.doc, parseInt(wrapper.dataset.page), wrapper));
   }
   await Promise.all(renderPromises);
-
-  // Scroll vers la page courante sans animation
   requestAnimationFrame(() => {
     const target = document.querySelector(`[data-page="${currentPage}"]`);
     if (target) target.scrollIntoView({ behavior: 'instant', block: 'start' });
@@ -633,8 +628,6 @@ async function loadRequests() {
 async function renderRequestsTab() {
   const requests = await loadRequests();
   const pending = requests.filter(r => r.status === 'pending');
-
-  // Badge
   const badge = document.getElementById('requestsBadge');
   if (pending.length > 0) { badge.textContent = pending.length; badge.classList.remove('hidden'); }
   else badge.classList.add('hidden');
@@ -682,7 +675,6 @@ async function renderRequestsTab() {
     </div>
   `;
 
-  // Pending cards
   const pendingList = document.getElementById('pendingRequestsList');
   if (!pending.length) pendingList.innerHTML = '<div style="color:var(--text-muted);font-size:.85rem;padding:8px">Aucune demande en attente</div>';
   pending.forEach(r => {
@@ -737,7 +729,7 @@ function renderRequestsTable(data) {
         ${r.status === 'pending' ? `
           <button class="btn-accept" style="padding:4px 10px;font-size:.75rem" onclick="handleRequest('${r.id}','accepted')">✓</button>
           <button class="btn-reject" style="padding:4px 10px;font-size:.75rem;margin-left:4px" onclick="handleRequest('${r.id}','rejected')">✕</button>
-         ` : '—'}
+        ` : '—'}
       </td>`;
     tbody.appendChild(tr);
   });
@@ -833,12 +825,9 @@ async function registerStudent(fullName, email, phone, password) {
    🔒  SECURITY
 ============================================================ */
 function applyPdfSecurity() {
-  // Bloque clic droit sur PDF
   document.addEventListener('contextmenu', e => {
     if (e.target.closest('#pdfContainer') || e.target.tagName === 'CANVAS') e.preventDefault();
   });
-
-  // Bloque raccourcis clavier dangereux
   document.addEventListener('keydown', e => {
     const inReader = !document.getElementById('pdfReaderView').classList.contains('hidden');
     if (inReader && (e.ctrlKey || e.metaKey) && ['s', 'p', 'u', 'a'].includes(e.key)) e.preventDefault();
@@ -847,61 +836,44 @@ function applyPdfSecurity() {
       if (reader.classList.contains('fullscreen')) toggleFullscreen();
     }
   });
-
-  // Bloque drag des canvas
   document.addEventListener('dragstart', e => { if (e.target.tagName === 'CANVAS') e.preventDefault(); });
-
-  // Bloque impression de la page entière quand PDF ouvert
   window.addEventListener('beforeprint', e => {
     if (!document.getElementById('pdfReaderView').classList.contains('hidden')) e.preventDefault();
   });
-
-  // Détecte si la page est dans un iframe (sécurité)
   if (window.top !== window.self) {
     document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#fff;background:#0f1117;font-family:sans-serif">Accès non autorisé</div>';
   }
-
-  // Désactive la sélection de texte sur les canvas
   document.addEventListener('selectstart', e => { if (e.target.tagName === 'CANVAS') e.preventDefault(); });
-
-  // Session timeout — déconnecte après 2h d'inactivité
   let inactivityTimer;
   function resetTimer() {
     clearTimeout(inactivityTimer);
     inactivityTimer = setTimeout(() => {
-      if (state.user) {
-        alert('Session expirée pour inactivité. Vous allez être déconnecté.');
-        logout();
-      }
-    }, 2 * 60 * 60 * 1000); // 2 heures
+      if (state.user) { alert('Session expirée pour inactivité. Vous allez être déconnecté.'); logout(); }
+    }, 2 * 60 * 60 * 1000);
   }
   ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(e => document.addEventListener(e, resetTimer, { passive: true }));
   resetTimer();
 }
 
-// Bloque F12 et l'inspecteur
+// Bloque F12
 document.addEventListener('keydown', e => {
   if (e.key === 'F12') { e.preventDefault(); return false; }
-  if (e.ctrlKey && e.shiftKey && ['i','j','c','k'].includes(e.key.toLowerCase())) {
-    e.preventDefault(); return false;
-  }
+  if (e.ctrlKey && e.shiftKey && ['i', 'j', 'c', 'k'].includes(e.key.toLowerCase())) { e.preventDefault(); return false; }
   if (e.ctrlKey && e.key === 'u') { e.preventDefault(); return false; }
 });
 
-// ── Détecte DevTools ──
+// Détecte DevTools
 const devtools = { open: false };
 setInterval(() => {
   const threshold = 160;
-  if (window.outerWidth - window.innerWidth > threshold ||
-      window.outerHeight - window.innerHeight > threshold) {
+  if (window.outerWidth - window.innerWidth > threshold || window.outerHeight - window.innerHeight > threshold) {
     if (!devtools.open) {
       devtools.open = true;
       const container = document.getElementById('pdfContainer');
       if (container) container.classList.add('blurred');
       const pages = document.getElementById('pdfPages');
       if (pages) pages.innerHTML = `
-        <div style="display:flex;flex-direction:column;align-items:center;
-          justify-content:center;height:400px;color:var(--text-secondary);gap:16px">
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:400px;color:var(--text-secondary);gap:16px">
           <span style="font-size:3rem">🔒</span>
           <p>Accès bloqué — fermez les outils de développement</p>
         </div>`;
@@ -939,8 +911,8 @@ async function init() {
   setupEventListeners();
 
   if (checkSession()) {
-    // Tente de rafraîchir le token silencieusement
-    await refreshToken();
+    // Rafraîchit le token en arrière-plan sans bloquer l'affichage
+    refreshToken().catch(() => {});
     hideLoginOverlay();
     renderUserInfo();
     await loadFolders();
@@ -948,7 +920,7 @@ async function init() {
     renderSidebar();
     renderFileGrid();
   }
-  // Si pas de session → la page login reste visible (comportement par défaut)
+  // Sinon → page login reste visible
 }
 
 /* ============================================================
@@ -1005,10 +977,8 @@ function setupEventListeners() {
   });
   document.getElementById('loginPassword').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('loginBtn').click(); });
 
-  // LOGOUT
   document.getElementById('logoutBtn').addEventListener('click', logout);
 
-  // SIDEBAR TOGGLE
   document.getElementById('sidebarToggle').addEventListener('click', () => {
     document.getElementById('sidebar').classList.toggle('open');
     document.getElementById('sidebarOverlay').classList.toggle('active');
@@ -1018,21 +988,17 @@ function setupEventListeners() {
     document.getElementById('sidebarOverlay').classList.remove('active');
   });
 
-  // ALL FILES
   document.getElementById('folderList').addEventListener('click', async e => {
     const li = e.target.closest('.folder-item');
     if (li && li.dataset.id === 'all') await switchFolder('all');
   });
 
-  // SEARCH
   document.getElementById('searchInput').addEventListener('input', e => { state.searchQuery = e.target.value; renderFileGrid(); });
 
-  // ADMIN
   document.getElementById('adminBtn').addEventListener('click', openAdmin);
   document.getElementById('closeAdmin').addEventListener('click', closeAdmin);
   document.getElementById('adminOverlay').addEventListener('click', e => { if (e.target === document.getElementById('adminOverlay')) closeAdmin(); });
 
-  // TABS
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -1044,7 +1010,6 @@ function setupEventListeners() {
     });
   });
 
-  // CREATE FOLDER
   document.getElementById('createFolderBtn').addEventListener('click', async () => {
     const el = document.getElementById('newFolderName'); const btn = document.getElementById('createFolderBtn');
     const name = el.value.trim(); if (!name) return;
@@ -1056,7 +1021,6 @@ function setupEventListeners() {
   });
   document.getElementById('newFolderName').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('createFolderBtn').click(); });
 
-  // FILE DROP
   const fileDrop = document.getElementById('fileDrop');
   const fileInput = document.getElementById('fileInput');
   fileDrop.addEventListener('click', () => fileInput.click());
@@ -1071,7 +1035,6 @@ function setupEventListeners() {
     const t = document.getElementById('uploadTitle'); if (!t.value) t.value = f.name.replace(/\.pdf$/i, '');
   }
 
-  // UPLOAD
   document.getElementById('uploadBtn').addEventListener('click', async () => {
     const title = document.getElementById('uploadTitle').value.trim();
     const folder = document.getElementById('uploadFolder').value;
@@ -1099,24 +1062,17 @@ function setupEventListeners() {
     } else { showUploadMsg('✗ ' + (message || "Erreur lors de l'upload."), 'error'); }
   });
 
-  // PDF NAV
   document.getElementById('prevPage').addEventListener('click', () => { if (state.pdf.currentPage > 1) scrollToPage(state.pdf.currentPage - 1); });
   document.getElementById('nextPage').addEventListener('click', () => { if (state.pdf.currentPage < state.pdf.totalPages) scrollToPage(state.pdf.currentPage + 1); });
   document.getElementById('pageInput').addEventListener('change', e => { const p = parseInt(e.target.value); if (p >= 1 && p <= state.pdf.totalPages) scrollToPage(p); });
   document.getElementById('pageInput').addEventListener('keydown', e => { if (e.key === 'Enter') { const p = parseInt(e.target.value); if (p >= 1 && p <= state.pdf.totalPages) scrollToPage(p); } });
 
-  // ZOOM
   document.getElementById('zoomIn').addEventListener('click', () => rezoomPdf(state.pdf.zoom + 0.2));
   document.getElementById('zoomOut').addEventListener('click', () => rezoomPdf(state.pdf.zoom - 0.2));
   document.getElementById('zoomFit').addEventListener('click', () => rezoomPdf(1.0));
-
-  // FULLSCREEN
   document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
-
-  // BACK
   document.getElementById('backToGrid').addEventListener('click', () => { closePdfReader(); renderFileGrid(); });
 
-  // MODALS
   document.getElementById('cancelRename').addEventListener('click', closeRename);
   document.getElementById('confirmRename').addEventListener('click', confirmRenameAction);
   document.getElementById('renameInput').addEventListener('keydown', e => { if (e.key === 'Enter') confirmRenameAction(); });
@@ -1133,31 +1089,8 @@ window.handleRequest = handleRequest;
 window.deleteRequest = deleteRequest;
 window.togglePwd = togglePwd;
 
-// ── Refresh token automatique toutes les 50 minutes ──
-async function refreshToken() {
-  const token = localStorage.getItem('sb_token');
-  const refreshTok = localStorage.getItem('sb_refresh_token');
-  if (!token || !refreshTok || !state.user) return;
-  try {
-    // Vérifie si le token expire dans moins d'1h
-    const parts = token.split('.');
-    if (parts.length === 3) {
-      const payload = JSON.parse(atob(parts[1]));
-      const now = Math.floor(Date.now() / 1000);
-      if (payload.exp && (payload.exp - now) > 3600) return; // encore valide
-    }
-    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
-      method: 'POST',
-      headers: { 'apikey': SUPABASE_ANON, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: refreshTok })
-    });
-    if (res.ok) {
-      const data = await res.json();
-      localStorage.setItem('sb_token', data.access_token);
-      if (data.refresh_token) localStorage.setItem('sb_refresh_token', data.refresh_token);
-    }
-  } catch (e) { console.log('Token refresh failed', e); }
-}
-// Vérifie toutes les 10 minutes
+// Refresh toutes les 10 minutes
 setInterval(refreshToken, 10 * 60 * 1000);
+
+// Point d'entrée unique
 document.addEventListener('DOMContentLoaded', init);
