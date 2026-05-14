@@ -149,19 +149,35 @@ async function login(email, password) {
 }
 
 function logout() {
+  // Affiche un spinner de déconnexion
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="logoutOverlay" style="
+      position:fixed;inset:0;background:rgba(0,0,0,0.7);
+      display:flex;flex-direction:column;align-items:center;
+      justify-content:center;z-index:9999;gap:16px">
+      <div class="spinner"></div>
+      <p style="color:#fff;font-family:var(--font-body);font-size:.95rem">Déconnexion en cours...</p>
+    </div>
+  `);
+
   const user = state.user;
   const token = localStorage.getItem('sb_token');
-  if (user?.id && token) {
-    fetch(`${SUPABASE_URL}/rest/v1/active_sessions?user_id=eq.${user.id}`, {
-      method: 'DELETE', headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${token}` }
-    }).catch(() => {});
-  }
-  state.user = null;
-  localStorage.removeItem('bn_user');
-  localStorage.removeItem('sb_token');
-  localStorage.removeItem('sb_refresh_token');
-  closePdfReader();
-  showLoginOverlay();
+
+  setTimeout(() => {
+    if (user?.id && token) {
+      fetch(`${SUPABASE_URL}/rest/v1/active_sessions?user_id=eq.${user.id}`, {
+        method: 'DELETE', headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${token}` }
+      }).catch(() => {});
+    }
+    state.user = null;
+    localStorage.removeItem('bn_user');
+    localStorage.removeItem('sb_token');
+    localStorage.removeItem('sb_refresh_token');
+    closePdfReader();
+    showLoginOverlay();
+    const overlay = document.getElementById('logoutOverlay');
+    if (overlay) overlay.remove();
+  }, 1500);
 }
 
 // ✅ checkSession — restaure la session depuis localStorage
