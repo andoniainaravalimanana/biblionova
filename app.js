@@ -149,14 +149,18 @@ async function login(email, password) {
 }
 
 function logout() {
-  // Affiche un spinner de déconnexion
+  // Affiche loading de déconnexion
   document.body.insertAdjacentHTML('beforeend', `
     <div id="logoutOverlay" style="
-      position:fixed;inset:0;background:rgba(0,0,0,0.7);
-      display:flex;flex-direction:column;align-items:center;
-      justify-content:center;z-index:9999;gap:16px">
-      <div class="spinner"></div>
-      <p style="color:#fff;font-family:var(--font-body);font-size:.95rem">Déconnexion en cours...</p>
+      position:fixed;inset:0;
+      background:rgba(15,17,23,0.92);
+      display:flex;flex-direction:column;
+      align-items:center;justify-content:center;
+      z-index:9999;gap:20px">
+      <div class="spinner" style="width:40px;height:40px;border-width:4px"></div>
+      <p style="color:#fff;font-family:var(--font-body);font-size:1rem;letter-spacing:.02em">
+        Déconnexion...
+      </p>
     </div>
   `);
 
@@ -166,7 +170,8 @@ function logout() {
   setTimeout(() => {
     if (user?.id && token) {
       fetch(`${SUPABASE_URL}/rest/v1/active_sessions?user_id=eq.${user.id}`, {
-        method: 'DELETE', headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${token}` }
+        method: 'DELETE',
+        headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${token}` }
       }).catch(() => {});
     }
     state.user = null;
@@ -175,8 +180,8 @@ function logout() {
     localStorage.removeItem('sb_refresh_token');
     closePdfReader();
     showLoginOverlay();
-    const overlay = document.getElementById('logoutOverlay');
-    if (overlay) overlay.remove();
+    const ov = document.getElementById('logoutOverlay');
+    if (ov) ov.remove();
   }, 1500);
 }
 
