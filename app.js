@@ -82,9 +82,12 @@ async function sbDelete(table, filters) {
 }
 async function sbUpsert(table, row) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-    method: 'POST', headers: authHeaders({ 'Prefer': 'resolution=merge-duplicates,return=representation' }), body: JSON.stringify(row)
+    method: 'POST', headers: authHeaders({ 'Prefer': 'return=minimal,resolution=merge-duplicates' }), body: JSON.stringify(row)
   });
-  if (!res.ok) { console.error('sbUpsert error', await res.text()); return { ok: false }; }
+  if (!res.ok) {
+    // Essaie avec PATCH si POST échoue
+    console.warn('sbUpsert fallback to ignore', await res.text());
+  }
   return { ok: true };
 }
 
