@@ -122,21 +122,11 @@ async function login(email, password) {
     const data = await res.json();
     if (!res.ok) return { ok: false, message: data.error_description || data.message || 'Identifiants incorrects.' };
 
-    // ✅ Sauvegarde IMMÉDIATEMENT le token
     const meta = data.user?.user_metadata || {};
     state.user = { id: data.user.id, email, role: meta.role || 'student', name: meta.name || email.split('@')[0] };
     localStorage.setItem('sb_token', data.access_token);
     localStorage.setItem('sb_refresh_token', data.refresh_token || '');
     localStorage.setItem('bn_user', JSON.stringify(state.user));
-
-    // Enregistre la session en arrière-plan (non bloquant)
-    const sessionId = getSessionId();
-    fetch(`${SUPABASE_URL}/rest/v1/active_sessions`, {
-      method: 'POST',
-      headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${data.access_token}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
-      body: JSON.stringify({ user_id: data.user.id, session_id: sessionId })
-    }).catch(() => {});
-
     return { ok: true };
   } catch (err) {
     return { ok: false, message: 'Erreur de connexion au serveur.' };
@@ -144,7 +134,6 @@ async function login(email, password) {
 }
 
 function logout() {
-  // Affiche loading de déconnexion
   document.body.insertAdjacentHTML('beforeend', `
     <div id="logoutOverlay" style="
       position:fixed;inset:0;
@@ -158,17 +147,7 @@ function logout() {
       </p>
     </div>
   `);
-
-  const user = state.user;
-  const token = localStorage.getItem('sb_token');
-
   setTimeout(() => {
-    if (user?.id && token) {
-      fetch(`${SUPABASE_URL}/rest/v1/active_sessions?user_id=eq.${user.id}`, {
-        method: 'DELETE',
-        headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${token}` }
-      }).catch(() => {});
-    }
     state.user = null;
     localStorage.removeItem('bn_user');
     localStorage.removeItem('sb_token');
