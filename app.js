@@ -1,3 +1,5 @@
+// v2
+
 /**
  * BiblioNova — app.js (VERSION COMPLETE ET STABLE)
  */
